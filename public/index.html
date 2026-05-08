@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>新闻聚合工具</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 顶栏 -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="logo-icon">⬡</span>
+      <span class="logo-text">新闻聚合工具</span>
+    </div>
+    <div class="topbar-right">
+      <span id="statusBadge" class="badge badge-idle">空闲</span>
+      <span id="totalCount" class="stat-text">共 0 条</span>
+      <span id="lastCollect" class="stat-text muted"></span>
+      <button class="btn btn-primary" id="collectBtn" onclick="triggerCollect()">
+        <span id="collectBtnIcon">▶</span> 立即采集
+      </button>
+      <button class="btn btn-ghost" onclick="openSettings()">⚙ 设置</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- 左侧：新闻列表 -->
+    <section class="panel panel-list">
+      <div class="panel-header">
+        <span class="panel-title">新闻列表</span>
+        <button class="btn btn-sm btn-ghost" onclick="refreshArticles()">↻ 刷新</button>
+      </div>
+
+      <!-- 来源标签栏 -->
+      <div class="source-tabs" id="sourceTabs">
+        <button class="tab active" data-source="" onclick="filterSource(this, '')">全部</button>
+      </div>
+
+      <!-- 文章列表 -->
+      <div class="article-list" id="articleList">
+        <div class="empty-state">
+          <p>暂无文章，点击「立即采集」开始</p>
+        </div>
+      </div>
+
+      <!-- 分页 -->
+      <div class="pagination" id="pagination"></div>
+    </section>
+
+    <!-- 右侧 -->
+    <aside class="panel-right">
+      <!-- 已选新闻 -->
+      <section class="panel panel-selected">
+        <div class="panel-header">
+          <span class="panel-title accent">已选新闻</span>
+          <span class="badge-count" id="selectedCount">0</span>
+        </div>
+        <div class="selected-list" id="selectedList">
+          <p class="muted small">在左侧勾选文章后显示</p>
+        </div>
+        <div class="panel-footer">
+          <button class="btn btn-sm btn-ghost" onclick="clearSelected()">清除</button>
+          <button class="btn btn-sm btn-primary" onclick="generateLinks()">生成链接</button>
+        </div>
+      </section>
+
+      <!-- 链接输出 -->
+      <section class="panel panel-output">
+        <div class="panel-header">
+          <span class="panel-title accent">文章输出链接</span>
+        </div>
+        <div class="output-box" id="outputBox">
+          <p class="muted small">点击「生成链接」后显示</p>
+        </div>
+        <div class="panel-footer">
+          <button class="btn btn-sm btn-ghost" onclick="clearOutput()">清除</button>
+          <button class="btn btn-sm btn-primary" onclick="copyLinks()">复制</button>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <!-- 设置弹窗 -->
+  <div class="modal-overlay" id="settingsModal" onclick="closeSettings(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <span>设置</span>
+        <button class="btn-close" onclick="closeSettings()">✕</button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label">关键词（每行一个，留空则采集全部）</label>
+        <textarea id="keywordsInput" class="form-textarea" rows="8" placeholder="讣告&#10;通报&#10;Nature&#10;突破"></textarea>
+
+        <label class="form-label" style="margin-top:16px">采集时间（Cron 表达式）</label>
+        <input id="cronInput" class="form-input" type="text" placeholder="0 20 * * *">
+        <p class="hint">示例：<code>0 20 * * *</code> = 每天晚8点 | <code>0 8 * * *</code> = 每天早8点</p>
+
+        <label class="form-label" style="margin-top:16px">采集范围（天）</label>
+        <input id="rangeDaysInput" class="form-input" type="number" min="1" max="30" placeholder="1">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeSettings()">取消</button>
+        <button class="btn btn-primary" onclick="saveSettings()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
