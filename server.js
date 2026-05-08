@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const cron = require('node-cron');
 const path = require('path');
-const { db, insertArticle, getArticles, getCount, getSources, clearArticles, getSetting, setSetting, getAllSettings } = require('./db');
+const { insertArticle, getArticles, getCount, getSources, clearArticles, getSetting, setSetting, getAllSettings } = require('./db');
 const { collectAll } = require('./scrapers/index');
 
 const app = express();

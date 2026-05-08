@@ -1,84 +1,90 @@
-const Database = require('better-sqlite3');
+const fs = require('fs');
 const path = require('path');
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'news.db');
-const db = new Database(DB_PATH);
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+const DB_FILE = path.join(DATA_DIR, 'data.json');
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS articles (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    url TEXT NOT NULL UNIQUE,
-    source TEXT NOT NULL,
-    source_name TEXT NOT NULL,
-    published_at TEXT,
-    collected_at TEXT NOT NULL,
-    keywords_matched TEXT,
-    selected INTEGER DEFAULT 0
-  );
+const DEFAULT_DATA = {
+  articles: [],
+  settings: {
+    cron_schedule: '0 20 * * *',
+    keywords: ['讣告', '通报', '情况说明', '处分', '违纪', '违规', 'Nature', 'Science', '突破', '首次', '新策略', '研究生', '招生', '导师', '教授', '校长', '院士'],
+    date_range_days: '1'
+  }
+};
 
-  CREATE TABLE IF NOT EXISTS settings (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-  );
+function load() {
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      return JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
+    }
+  } catch {}
+  return JSON.parse(JSON.stringify(DEFAULT_DATA));
+}
 
-  INSERT OR IGNORE INTO settings VALUES ('cron_schedule', '0 20 * * *');
-  INSERT OR IGNORE INTO settings VALUES ('keywords', JSON('["讣告","通报","情况说明","处分","违纪","违规","Nature","Science","突破","首次","新策略","研究生","招生","导师","教授","校长"]'));
-  INSERT OR IGNORE INTO settings VALUES ('date_range_days', '1');
-`);
+function save(data) {
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('[DB] 写入失败:', e.message);
+  }
+}
+
+let _data = load();
+
+function getData() { return _data; }
 
 module.exports = {
-  db,
-
   insertArticle(article) {
-    const stmt = db.prepare(`
-      INSERT OR IGNORE INTO articles (title, url, source, source_name, published_at, collected_at, keywords_matched)
-      VALUES (@title, @url, @source, @source_name, @published_at, @collected_at, @keywords_matched)
-    `);
-    return stmt.run(article);
+    const d = getData();
+    const exists = d.articles.some(a => a.url === article.url);
+    if (exists) return { changes: 0 };
+    d.articles.unshift(article);
+    // 保留最近 5000 条
+    if (d.articles.length > 5000) d.articles = d.articles.slice(0, 5000);
+    save(d);
+    return { changes: 1 };
   },
 
-  getArticles({ source, page = 1, pageSize = 20 } = {}) {
-    const offset = (page - 1) * pageSize;
-    let query = 'SELECT * FROM articles';
-    const params = [];
-    if (source) {
-      query += ' WHERE source = ?';
-      params.push(source);
-    }
-    query += ' ORDER BY collected_at DESC LIMIT ? OFFSET ?';
-    params.push(pageSize, offset);
-    return db.prepare(query).all(...params);
+  getArticles({ source, page = 1, pageSize = 50 } = {}) {
+    const d = getData();
+    let list = source ? d.articles.filter(a => a.source === source) : d.articles;
+    const start = (page - 1) * pageSize;
+    return list.slice(start, start + pageSize);
   },
 
   getCount(source) {
-    if (source) {
-      return db.prepare('SELECT COUNT(*) as count FROM articles WHERE source = ?').get(source).count;
-    }
-    return db.prepare('SELECT COUNT(*) as count FROM articles').get().count;
+    const d = getData();
+    return source ? d.articles.filter(a => a.source === source).length : d.articles.length;
   },
 
   getSources() {
-    return db.prepare('SELECT source, source_name, COUNT(*) as count FROM articles GROUP BY source ORDER BY source_name').all();
+    const d = getData();
+    const map = {};
+    d.articles.forEach(a => {
+      if (!map[a.source]) map[a.source] = { source: a.source, source_name: a.source_name, count: 0 };
+      map[a.source].count++;
+    });
+    return Object.values(map).sort((a, b) => a.source_name.localeCompare(b.source_name, 'zh'));
   },
 
   clearArticles() {
-    db.prepare('DELETE FROM articles').run();
+    const d = getData();
+    d.articles = [];
+    save(d);
   },
 
   getSetting(key) {
-    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
-    return row ? row.value : null;
+    return getData().settings[key] ?? null;
   },
 
   setSetting(key, value) {
-    db.prepare('INSERT OR REPLACE INTO settings VALUES (?, ?)').run(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
+    const d = getData();
+    d.settings[key] = value;
+    save(d);
   },
 
   getAllSettings() {
-    return db.prepare('SELECT * FROM settings').all().reduce((acc, row) => {
-      try { acc[row.key] = JSON.parse(row.value); } catch { acc[row.key] = row.value; }
-      return acc;
-    }, {});
+    return getData().settings;
   }
 };

@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git init *)"
+      "Bash(git init *)",
+      "Bash(pkill -f \"node server\")",
+      "Bash(echo \"data.json\")"
     ]
   }
 }
