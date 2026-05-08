@@ -1,5 +1,5 @@
 const cheerio = require('cheerio');
-const { fetchHtml, matchKeywords, formatDate } = require('./utils');
+const { fetchHtml, matchKeywords } = require('./utils');
 
 const SOURCE = 'sciencenet';
 const SOURCE_NAME = '科学网';
@@ -8,7 +8,6 @@ const URL = 'https://news.sciencenet.cn/todaynews.aspx';
 async function scrape(keywords, rangeDays = 1) {
   const articles = [];
   try {
-    // 科学网是 UTF-8
     const html = await fetchHtml(URL);
     const $ = cheerio.load(html);
     const seen = new Set();
@@ -16,11 +15,14 @@ async function scrape(keywords, rangeDays = 1) {
     $('a[href*="htmlnews"]').each((_, el) => {
       const $a = $(el);
       const title = $a.text().trim();
-      let href = $a.attr('href') || '';
-      if (!title || title.length < 5) return;
+      let href = ($a.attr('href') || '').trim().split(/\s/)[0]; // 去掉 target= 等多余内容
+      if (!title || title.length < 5 || !href) return;
+
       if (!href.startsWith('http')) {
-        href = 'https://news.sciencenet.cn' + (href.startsWith('/') ? '' : '/') + href.replace(/^\//, '');
+        href = 'https://news.sciencenet.cn' + (href.startsWith('/') ? href : '/' + href);
       }
+      // 统一用 https
+      href = href.replace(/^http:\/\//, 'https://');
       if (seen.has(href)) return;
       seen.add(href);
 
