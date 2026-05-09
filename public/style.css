@@ -137,6 +137,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .article-title { font-size: 13.5px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .article-meta { display: flex; gap: 8px; margin-top: 2px; align-items: center; }
 .article-date { font-size: 11px; color: var(--text-muted); }
+.article-date.collected { color: #bbb; font-style: italic; }
 .article-source { font-size: 11px; color: var(--accent); font-weight: 500; }
 .article-kw { font-size: 10px; background: var(--accent-soft); color: var(--accent); padding: 1px 6px; border-radius: 3px; }
 

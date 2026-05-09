@@ -1,5 +1,5 @@
 const cheerio = require('cheerio');
-const { fetchHtml, matchKeywords, formatDate } = require('./utils');
+const { fetchHtml, matchKeywords } = require('./utils');
 
 const SOURCE = 'whu';
 const SOURCE_NAME = '武汉大学';
@@ -12,7 +12,6 @@ async function scrape(keywords, rangeDays = 1) {
     const $ = cheerio.load(html);
     const seen = new Set();
 
-    // 武汉大学通知公告：info/ 和 tzggnr.jsp 路径
     $('a[href*="info/"], a[href*="tzggnr"]').each((_, el) => {
       const $a = $(el);
       const title = $a.text().replace(/\s+/g, ' ').trim();
@@ -24,12 +23,17 @@ async function scrape(keywords, rangeDays = 1) {
       if (seen.has(href)) return;
       seen.add(href);
 
+      // 日期在同一行末尾：YYYY-MM-DD
+      const rowText = $a.closest('li, tr, .list-item').text().replace(/\s+/g, ' ').trim();
+      const dateMatch = rowText.match(/(\d{4}-\d{2}-\d{2})/);
+      const publishedAt = dateMatch ? dateMatch[1] : null;
+
       const matched = keywords.length === 0 ? ['全部'] : matchKeywords(title, keywords);
       if (keywords.length > 0 && matched.length === 0) return;
 
       articles.push({
         title, url: href, source: SOURCE, source_name: SOURCE_NAME,
-        published_at: new Date().toISOString().substring(0, 10),
+        published_at: publishedAt,
         collected_at: new Date().toISOString(),
         keywords_matched: JSON.stringify(matched)
       });

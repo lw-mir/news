@@ -1,5 +1,5 @@
 const cheerio = require('cheerio');
-const { fetchHtml, matchKeywords, formatDate } = require('./utils');
+const { fetchHtml, matchKeywords } = require('./utils');
 
 const SOURCE = 'pku-news';
 const SOURCE_NAME = '北大新闻网';
@@ -14,15 +14,18 @@ async function scrape(keywords, rangeDays = 1) {
 
     $('a[href$=".htm"], a[href$=".html"]').each((_, el) => {
       const $a = $(el);
+      const rawText = $a.closest('li, .list-item, p').text().replace(/\s+/g, ' ').trim();
+
+      // 日期格式：2026/05/09 在行首
+      const dateMatch = rawText.match(/^(\d{4}[\/\-]\d{2}[\/\-]\d{2})/);
+      const publishedAt = dateMatch ? dateMatch[1].replace(/\//g, '-') : null;
+
       const title = $a.text().replace(/\s+/g, ' ').trim();
       let href = $a.attr('href') || '';
       if (!title || title.length < 6) return;
       if (!href.startsWith('http')) {
-        if (href.startsWith('/')) {
-          href = 'https://news.pku.edu.cn' + href;
-        } else {
-          href = 'https://news.pku.edu.cn/xwzh/' + href;
-        }
+        href = href.startsWith('/') ? 'https://news.pku.edu.cn' + href
+          : 'https://news.pku.edu.cn/xwzh/' + href;
       }
       if (!href.includes('pku.edu.cn')) return;
       if (seen.has(href)) return;
@@ -33,7 +36,7 @@ async function scrape(keywords, rangeDays = 1) {
 
       articles.push({
         title, url: href, source: SOURCE, source_name: SOURCE_NAME,
-        published_at: new Date().toISOString().substring(0, 10),
+        published_at: publishedAt,
         collected_at: new Date().toISOString(),
         keywords_matched: JSON.stringify(matched)
       });

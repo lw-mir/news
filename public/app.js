@@ -60,7 +60,14 @@ function renderArticles() {
     try { kws = JSON.parse(a.keywords_matched || '[]'); } catch {}
     const kwHtml = kws.length > 0 && kws[0] !== '全部'
       ? `<span class="article-kw">${kws.slice(0, 3).join(' ')}</span>` : '';
-    const date = a.published_at ? a.published_at.substring(0, 10) : '';
+    // 优先显示发布日期，没有则显示采集日期（标注为"采集"）
+    let dateHtml = '';
+    if (a.published_at) {
+      dateHtml = `<span class="article-date" title="发布日期">${a.published_at.substring(0, 10)}</span>`;
+    } else if (a.collected_at) {
+      const cd = a.collected_at.substring(0, 10);
+      dateHtml = `<span class="article-date collected" title="采集日期（无发布日期）">${cd} 采集</span>`;
+    }
     const eu = encodeURIComponent(a.url);
     const et = escHtml(a.title).replace(/'/g, '&#39;');
     return `
@@ -70,7 +77,7 @@ function renderArticles() {
           <div class="article-title">${escHtml(a.title)}</div>
           <div class="article-meta">
             <span class="article-source">${escHtml(a.source_name)}</span>
-            ${date ? `<span class="article-date">${date}</span>` : ''}
+            ${dateHtml}
             ${kwHtml}
           </div>
         </div>

@@ -31,7 +31,7 @@ async function scrape(keywords, rangeDays = 1) {
         if (keywords.length > 0 && matched.length === 0) continue;
         articles.push({
           title, url, source: SOURCE, source_name: SOURCE_NAME,
-          published_at: new Date().toISOString().substring(0, 10),
+          published_at: null,
           collected_at: new Date().toISOString(),
           keywords_matched: JSON.stringify(matched)
         });
@@ -50,7 +50,7 @@ async function scrape(keywords, rangeDays = 1) {
         if (keywords.length > 0 && matched.length === 0) return;
         articles.push({
           title, url: href, source: SOURCE, source_name: SOURCE_NAME,
-          published_at: new Date().toISOString().substring(0, 10),
+          published_at: null,
           collected_at: new Date().toISOString(),
           keywords_matched: JSON.stringify(matched)
         });

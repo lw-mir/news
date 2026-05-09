@@ -1,5 +1,5 @@
 const cheerio = require('cheerio');
-const { fetchHtml, matchKeywords, formatDate } = require('./utils');
+const { fetchHtml, matchKeywords } = require('./utils');
 
 const SOURCE = 'tsinghua';
 const SOURCE_NAME = '清华大学';
@@ -15,12 +15,23 @@ async function scrape(keywords, rangeDays = 1) {
     $('a[href*="/info/"]').each((_, el) => {
       const $a = $(el);
       const rawText = $a.text().replace(/\s+/g, ' ').trim();
-      // 标题中可能包含日期 "07 2026.05 真实标题"，提取真实标题
-      const title = rawText.replace(/^\d{1,2}\s+\d{4}\.\d{2}\s*/, '').trim();
+
+      // 格式：08 2026.05 真实标题
+      // 提取日期：day=08, year.month=2026.05
+      const dateMatch = rawText.match(/^(\d{1,2})\s+(\d{4})\.(\d{2})\s*/);
+      let publishedAt = null;
+      let title = rawText;
+      if (dateMatch) {
+        const [, day, year, month] = dateMatch;
+        publishedAt = `${year}-${month}-${day.padStart(2, '0')}`;
+        title = rawText.slice(dateMatch[0].length).trim();
+      }
+
       let href = $a.attr('href') || '';
       if (!title || title.length < 5) return;
       if (!href.startsWith('http')) {
-        href = href.startsWith('/') ? 'https://www.tsinghua.edu.cn' + href
+        href = href.startsWith('/')
+          ? 'https://www.tsinghua.edu.cn' + href
           : 'https://www.tsinghua.edu.cn/' + href.replace(/^\.\.\//, '');
       }
       if (seen.has(href)) return;
@@ -31,7 +42,7 @@ async function scrape(keywords, rangeDays = 1) {
 
       articles.push({
         title, url: href, source: SOURCE, source_name: SOURCE_NAME,
-        published_at: new Date().toISOString().substring(0, 10),
+        published_at: publishedAt,
         collected_at: new Date().toISOString(),
         keywords_matched: JSON.stringify(matched)
       });
