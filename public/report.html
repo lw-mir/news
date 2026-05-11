@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>发布日期获取方案调研报告</title>
+  <style>
+    :root {
+      --accent: #5856D6;
+      --accent-soft: #EEEEFF;
+      --green: #34C759;
+      --green-soft: #E8F5E9;
+      --red: #FF3B30;
+      --red-soft: #FFF0F0;
+      --orange: #FF9500;
+      --orange-soft: #FFF3E0;
+      --yellow: #FFCC00;
+      --yellow-soft: #FFFDE7;
+      --gray: #8E8E93;
+      --border: #E8E8E8;
+      --bg: #F5F5F5;
+      --panel: #FFFFFF;
+      --text: #1A1A1A;
+      --text-dim: #666;
+      --text-muted: #999;
+      --radius: 10px;
+      --shadow: 0 1px 4px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+      --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+      --mono: 'SF Mono', 'Fira Code', Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.7; }
+
+    /* ── 顶部标题区 ── */
+    .hero {
+      background: var(--panel); border-bottom: 1px solid var(--border);
+      padding: 40px 0 32px;
+    }
+    .hero-inner { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+    .hero-tag { display: inline-flex; align-items: center; gap: 6px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 20px; margin-bottom: 14px; letter-spacing: .3px; }
+    .hero h1 { font-size: 26px; font-weight: 700; letter-spacing: -.5px; margin-bottom: 8px; }
+    .hero-meta { color: var(--text-muted); font-size: 13px; display: flex; gap: 20px; flex-wrap: wrap; }
+    .hero-meta span::before { content: ''; display: inline-block; width: 4px; height: 4px; background: var(--text-muted); border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+
+    /* ── 布局 ── */
+    .container { max-width: 960px; margin: 0 auto; padding: 32px 24px; display: flex; flex-direction: column; gap: 28px; }
+
+    /* ── 卡片 ── */
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: #FAFAFA; }
+    .card-icon { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .card-title { font-size: 14px; font-weight: 700; }
+    .card-desc { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+    .card-body { padding: 20px; }
+
+    /* ── TL;DR ── */
+    .tldr-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .tldr-item { border-radius: 8px; padding: 16px; text-align: center; }
+    .tldr-num { font-size: 32px; font-weight: 800; line-height: 1; margin-bottom: 6px; }
+    .tldr-label { font-size: 12px; font-weight: 500; }
+    .tldr-sub { font-size: 11px; margin-top: 3px; opacity: .7; }
+
+    /* ── 来源状态网格 ── */
+    .source-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .source-card { border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; position: relative; overflow: hidden; }
+    .source-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+    .source-card.easy::before { background: var(--green); }
+    .source-card.medium::before { background: var(--orange); }
+    .source-card.hard::before { background: var(--red); }
+    .source-card.done::before { background: var(--accent); }
+    .source-card.blocked::before { background: var(--gray); }
+    .source-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .source-name { font-size: 13px; font-weight: 700; }
+    .source-url { font-size: 11px; color: var(--text-muted); font-family: var(--mono); margin-top: 1px; word-break: break-all; }
+    .source-badges { display: flex; gap: 5px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+    .badge-green { background: var(--green-soft); color: #2e7d32; }
+    .badge-orange { background: var(--orange-soft); color: #e65100; }
+    .badge-red { background: var(--red-soft); color: var(--red); }
+    .badge-purple { background: var(--accent-soft); color: var(--accent); }
+    .badge-gray { background: #F0F0F0; color: var(--gray); }
+    .badge-yellow { background: var(--yellow-soft); color: #7c6800; }
+    .source-solution { font-size: 12.5px; color: var(--text-dim); }
+    .source-solution strong { color: var(--text); }
+    .source-detail { background: #FAFAFA; border-radius: 6px; padding: 8px 10px; font-size: 11.5px; font-family: var(--mono); color: var(--text-dim); line-height: 1.6; word-break: break-all; }
+    .source-detail .highlight { color: var(--accent); font-weight: 600; }
+    .source-time { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+    .source-time::before { content: '⏱'; font-size: 11px; }
+
+    /* ── 分阶段计划 ── */
+    .phase-list { display: flex; flex-direction: column; gap: 16px; }
+    .phase { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .phase-header { padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
+    .phase-num { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .phase-title { font-size: 13px; font-weight: 700; }
+    .phase-subtitle { font-size: 12px; margin-left: auto; font-weight: 500; }
+    .phase-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .phase-table th { background: #FAFAFA; padding: 8px 14px; text-align: left; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .phase-table td { padding: 10px 14px; border-bottom: 1px solid #F5F5F5; vertical-align: top; }
+    .phase-table tr:last-child td { border-bottom: none; }
+    .phase-table td:first-child { font-weight: 600; }
+    .phase-table .total-row td { background: #FAFAFA; font-weight: 700; border-top: 1px solid var(--border); }
+    .difficulty-dot { display: inline-flex; align-items: center; gap: 5px; }
+    .difficulty-dot::before { content: ''; width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .diff-low::before { background: var(--green); }
+    .diff-mid::before { background: var(--orange); }
+    .diff-high::before { background: var(--red); }
+    .diff-none::before { background: var(--gray); }
+
+    /* ── 成本表 ── */
+    .cost-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .cost-table th { background: #FAFAFA; padding: 9px 14px; text-align: left; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; border-bottom: 2px solid var(--border); }
+    .cost-table td { padding: 10px 14px; border-bottom: 1px solid #F5F5F5; }
+    .cost-table tr:last-child td { border-bottom: none; background: #FAFAFA; font-weight: 700; }
+    .cost-em { color: var(--accent); font-weight: 700; }
+
+    /* ── 推荐框 ── */
+    .recommend-box { background: linear-gradient(135deg, #EEEEFF 0%, #F0F8FF 100%); border: 1px solid #C8C7FF; border-radius: 8px; padding: 16px 20px; display: flex; gap: 14px; }
+    .recommend-icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+    .recommend-title { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
+    .recommend-list { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+    .recommend-list li { font-size: 13px; color: var(--text-dim); padding-left: 16px; position: relative; }
+    .recommend-list li::before { content: '→'; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
+    .recommend-list li strong { color: var(--text); }
+
+    /* ── 工期汇总横幅 ── */
+    .summary-banner { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .summary-item { background: var(--panel); padding: 18px 20px; text-align: center; }
+    .summary-val { font-size: 28px; font-weight: 800; letter-spacing: -.5px; }
+    .summary-label { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+
+    /* ── 对比选项卡 ── */
+    .option-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .option-card { border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+    .option-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .option-rows { display: flex; flex-direction: column; gap: 5px; }
+    .option-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+    .option-row-label { color: var(--text-dim); }
+    .option-row-val { font-weight: 600; }
+
+    /* ── 状态图标 ── */
+    .icon-check { color: var(--green); }
+    .icon-warn { color: var(--orange); }
+    .icon-block { color: var(--red); }
+
+    @media (max-width: 640px) {
+      .tldr-grid { grid-template-columns: repeat(2, 1fr); }
+      .source-grid { grid-template-columns: 1fr; }
+      .option-grid { grid-template-columns: 1fr; }
+      .summary-banner { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- 顶部 -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-tag">📋 调研报告</div>
+    <h1>新闻来源发布日期获取方案</h1>
+    <div class="hero-meta">
+      <span>调研日期：2026-05-11</span>
+      <span>覆盖来源：9个</span>
+      <span>已实际 curl 验证</span>
+      <span>项目：news-aggregator</span>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- TL;DR -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:#EEEEFF">📊</div>
+      <div class="card-title">核心结论（TL;DR）</div>
+    </div>
+    <div class="card-body">
+      <div class="tldr-grid">
+        <div class="tldr-item" style="background:var(--green-soft)">
+          <div class="tldr-num" style="color:#2e7d32">2</div>
+          <div class="tldr-label" style="color:#2e7d32">已有真实日期</div>
+          <div class="tldr-sub" style="color:#388e3c">清华 / 武汉大学</div>
+        </div>
+        <div class="tldr-item" style="background:var(--accent-soft)">
+          <div class="tldr-num" style="color:var(--accent)">4</div>
+          <div class="tldr-label" style="color:var(--accent)">可快速修复</div>
+          <div class="tldr-sub" style="color:var(--accent)">≈ 3h 全部搞定</div>
+        </div>
+        <div class="tldr-item" style="background:var(--orange-soft)">
+          <div class="tldr-num" style="color:#e65100">1</div>
+          <div class="tldr-label" style="color:#e65100">需适配接口</div>
+          <div class="tldr-sub" style="color:#e65100">北大通知公告</div>
+        </div>
+        <div class="tldr-item" style="background:#F0F0F0">
+          <div class="tldr-num" style="color:var(--gray)">2</div>
+          <div class="tldr-label" style="color:var(--gray)">高成本 / 暂缓</div>
+          <div class="tldr-sub" style="color:var(--gray)">九派 / 中纪委</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 来源逐一分析 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:#E8F5E9">🔍</div>
+      <div class="card-title">9个来源逐一分析</div>
+      <div class="card-desc">已通过 curl 实际验证</div>
+    </div>
+    <div class="card-body">
+      <div class="source-grid">
+
+        <!-- 科学网 -->
+        <div class="source-card easy">
+          <div class="source-top">
+            <div>
+              <div class="source-name">科学网</div>
+              <div class="source-url">news.sciencenet.cn/todaynews.aspx</div>
+            </div>
+            <div class="source-badges">
+              <span class="badge badge-green">列表页有日期</span>
+              <span class="badge badge-purple">方案B</span>
+            </div>
+          </div>
+          <div class="source-solution">
+            列表页同行 <code style="background:#F5F5F5;padding:1px 5px;border-radius:3px;font-family:var(--mono)">&lt;td&gt;</code> 含完整时间戳，直接提取
+          </div>
+          <div class="source-detail">
+            <span class="highlight">2026/5/9 15:04:52</span> &nbsp;← td 文本<br>
+            selector: 文章所在 tr → 最后一个 td
+          </div>
+          <div class="source-time">0.5h&nbsp;&nbsp;<span class="difficulty-dot diff-low">低难度</span></div>
+        </div>
+
+        <!-- 北大新闻网 -->
+        <div class="source-card easy">
+          <div class="source-top">
+            <div>
+              <div class="source-name">北大新闻网</div>
+              <div class="source-url">news.pku.edu.cn/xwzh/index.htm</div>
+            </div>
+            <div class="source-badges">
+              <span class="badge badge-green">列表页有日期</span>
+              <span class="badge badge-purple">方案B</span>
+            </div>
+          </div>
+          <div class="source-solution">
+            列表页有 <code style="background:#F5F5F5;padding:1px 5px;border-radius:3px;font-family:var(--mono)">span.item-date</code> 包含精确日期
+          </div>
+          <div class="source-detail">
+            <span class="highlight">2026/05/09</span> &nbsp;← span.item-date<br>
+            每篇文章与日期在同一 div.item-lf 内
+          </div>
+          <div class="source-time">0.5h&nbsp;&nbsp;<span class="difficulty-dot diff-low">低难度</span></div>
+        </div>
+
+        <!-- 哈工大 -->
+        <div class="source-card easy">
+          <div class="source-top">
+            <div>
+              <div class="source-name">哈尔滨工业大学</div>
+              <div class="source-url">today.hit.edu.cn/category/10</div>
+            </div>
+            <div class="source-badges">
+              <span class="badge badge-green">RSS ⭐</span>
+              <span class="badge badge-purple">方案D</span>
+            </div>
+          </div>
+          <div class="source-solution">
+            <strong>最优方案</strong>：官方 RSS 完美可用，含精确 pubDate，5行代码
+          </div>
+          <div class="source-detail">
+            <span class="highlight">https://today.hit.edu.cn/rss.xml</span><br>
+            &lt;pubDate&gt;Sat, 09 May 2026 07:06:50 +0000&lt;/pubDate&gt;
+          </div>
+          <div class="source-time">1h&nbsp;&nbsp;<span class="difficulty-dot diff-low">极低难度</span></div>
+        </div>
+
+        <!-- 教育在线 -->
+        <div class="source-card easy">
+          <div class="source-top">
+            <div>
+              <div class="source-name">教育在线</div>
+              <div class="source-url">eol.cn/news/</div>
+            </div>
+            <div class="source-badges">
+              <span class="badge badge-green">列表页有日期</span>
+              <span class="badge badge-purple">方案B</span>
+            </div>
+          </div>
+          <div class="source-solution">
+            列表页 <code style="background:#F5F5F5;padding:1px 5px;border-radius:3px;font-family:var(--mono)">div.time</code> 含时间，精确到分钟
+          </div>
+          <div class="source-detail">
+            <span class="highlight">2026-05-09 15:39</span> &nbsp;← div.time<br>
+            URL 同时含 t20260509_，双重验证
+          </div>
+          <div class="source-time">0.5h&nbsp;&nbsp;<span class="difficulty-dot diff-low">低难度</span></div>
+        </div>
+
+        <!-- 清华大学 -->
+        <div class="source-card done">
+          <div class="source-top">
+            <div>
+              <div class="source-name">清华大学</div>
+              <div class="source-url">tsinghua.edu.cn/news/xsky.htm</div>
+            </div>
+            <div class="source-badges">
+              <span class="badge badge-purple">✅ 已实现</span>
+            </div>
+          </div>
+          <div class="source-solution">
+            列表页含 <code style="background:#F5F5F5;padding:1px 5px;border-radius:3px;font-family:var(--mono)">08 2026.05</code> 格式，已解析为 2026-05-08
+          </div>
+          <div class="source-detail">
+            &lt;p&gt;08&lt;/p&gt;&lt;span&gt;2026.05&lt;/span&gt;<br>
+            日 + 年月 拼合 → <span class="highlight">2026-05-08</span>
+          </div>
+          <div class="source-time">— &nbsp;&nbsp;<span class="difficulty-dot diff-none">无需改动</span></div>
+        </div>
+
+        <!-- 武汉大学 -->
+        <div class="source-card done">
+          <div class="source-top">
+            <div>
+              <div class="source-name">武汉大学通知公告</div>
+              <div class="source-url">whu.edu.cn/tzgg.htm</div>
+            </div>
+            <div class="source-badges">
+              <span class="badge badge-purple">✅ 已实现</span>
+            </div>
+          </div>
+          <div class="source-solution">
+            列表页 TD 直接含 YYYY-MM-DD，已提取
+          </div>
+          <div class="source-detail">
+            &lt;td&gt;<span class="highlight">2026-04-29</span>&lt;/td&gt;<br>
+            详情页 META PubDate 亦可作备选
+          </div>
+          <div class="source-time">— &nbsp;&nbsp;<span class="difficulty-dot diff-none">无需改动</span></div>
+        </div>
+
+        <!-- 北大通知公告 -->
+        <div class="source-card medium">
+          <div class="source-top">
+            <div>
+              <div class="source-name">北大通知公告</div>
+              <div class="source-url">pku.edu.cn/notices.html</div>
+            </div>
+            <div class="source-badges">
+              <span class="badge badge-orange">XML 接口</span>
+              <span class="badge badge-yellow">方案B*</span>
+            </div>
+          </div>
+          <div class="source-solution">
+            列表页内容 AJAX 动态加载，但存在 XML 接口含 &lt;PubDate&gt;
+          </div>
+          <div class="source-detail">
+            GET /dat/recentList.xml<br>
+            &lt;PubDate&gt;<span class="highlight">2024-12-13</span>&lt;/PubDate&gt;<br>
+            ⚠ 仅含声明类公告，普通通知需另找接口
+          </div>
+          <div class="source-time">2.5h&nbsp;&nbsp;<span class="difficulty-dot diff-mid">中等难度</span></div>
+        </div>
+
+        <!-- 九派新闻 -->
+        <div class="source-card hard">
+          <div class="source-top">
+            <div>
+              <div class="source-name">九派新闻教育</div>
+              <div class="source-url">news.qq.com/omn/author/...</div>
+            </div>
+            <div class="source-badges">
+              <span class="badge badge-red">JS 渲染</span>
+              <span class="badge badge-gray">高成本</span>
+            </div>
+          </div>
+          <div class="source-solution">
+            React SPA，静态 HTML 无内容。需 Playwright 无头浏览器，URL 含 YYYYMMDD 可降级
+          </div>
+          <div class="source-detail">
+            URL: /rain/a/<span class="highlight">20260509</span>XXXXXXXX<br>
+            完整方案：Playwright + Chromium 渲染<br>
+            服务器需额外 300MB+ 内存
+          </div>
+          <div class="source-time">4h+&nbsp;&nbsp;<span class="difficulty-dot diff-high">高难度</span></div>
+        </div>
+
+        <!-- 中纪委 -->
+        <div class="source-card blocked">
+          <div class="source-top">
+            <div>
+              <div class="source-name">中纪委要闻</div>
+              <div class="source-url">ccdi.gov.cn/yaowenn/</div>
+            </div>
+            <div class="source-badges">
+              <span class="badge badge-red">WAF 拦截</span>
+              <span class="badge badge-gray">暂无解</span>
+            </div>
+          </div>
+          <div class="source-solution">
+            所有请求被 WAF 重定向至验证码页面，URL 含日期但访问本身被封锁
+          </div>
+          <div class="source-detail">
+            curl → 返回图片验证码（seccaptcha.haplat.net）<br>
+            URL 格式：/t<span class="highlight">20260509</span>_324897.html<br>
+            需代理 IP 池，¥35–200/月运行成本
+          </div>
+          <div class="source-time">3h+&nbsp;&nbsp;<span class="difficulty-dot diff-high">高难度</span></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 分阶段计划 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:#FFF3E0">📅</div>
+      <div class="card-title">分阶段实施计划</div>
+    </div>
+    <div class="card-body">
+      <div class="phase-list">
+
+        <!-- 阶段一 -->
+        <div class="phase">
+          <div class="phase-header" style="background:#E8F5E9;border-bottom:1px solid #C8E6C9">
+            <div class="phase-num" style="background:var(--green)">1</div>
+            <div class="phase-title">快速修复阶段 — 当天可完成</div>
+            <div class="phase-subtitle" style="color:#2e7d32">≈ 3h &nbsp;·&nbsp; 覆盖 4 个来源</div>
+          </div>
+          <table class="phase-table">
+            <thead>
+              <tr><th>来源</th><th>具体操作</th><th>难度</th><th>工期</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>科学网</td>
+                <td>调整 cheerio selector，提取同行 td 的时间戳（2026/5/9 15:04:52）</td>
+                <td><span class="difficulty-dot diff-low">低</span></td>
+                <td>0.5h</td>
+              </tr>
+              <tr>
+                <td>北大新闻网</td>
+                <td>提取 span.item-date 内容，解析为 YYYY-MM-DD</td>
+                <td><span class="difficulty-dot diff-low">低</span></td>
+                <td>0.5h</td>
+              </tr>
+              <tr>
+                <td>哈工大</td>
+                <td>完全重写爬虫，改为解析官方 RSS（today.hit.edu.cn/rss.xml）</td>
+                <td><span class="difficulty-dot diff-low">极低</span></td>
+                <td>1h</td>
+              </tr>
+              <tr>
+                <td>教育在线</td>
+                <td>提取 div.time 文本（2026-05-09 15:39），精确到分钟</td>
+                <td><span class="difficulty-dot diff-low">低</span></td>
+                <td>0.5h</td>
+              </tr>
+              <tr class="total-row">
+                <td colspan="3">阶段一完成后：9个来源中 6个 有真实发布日期 ✓</td>
+                <td>合计 3h</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 阶段二 -->
+        <div class="phase">
+          <div class="phase-header" style="background:#FFF3E0;border-bottom:1px solid #FFE0B2">
+            <div class="phase-num" style="background:var(--orange)">2</div>
+            <div class="phase-title">接口适配阶段 — 按需投入</div>
+            <div class="phase-subtitle" style="color:#e65100">≈ 2.5h &nbsp;·&nbsp; 1 个来源</div>
+          </div>
+          <table class="phase-table">
+            <thead>
+              <tr><th>来源</th><th>具体操作</th><th>风险点</th><th>工期</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>北大通知公告</td>
+                <td>
+                  1. 分析页面实际 AJAX 请求（/dat/recentList.xml 等）<br>
+                  2. 适配 XML/JSON 接口，解析 PubDate<br>
+                  3. 测试各类通知的覆盖情况
+                </td>
+                <td style="color:var(--orange)">接口仅含声明类公告，普通通知可能无解</td>
+                <td>2.5h</td>
+              </tr>
+              <tr class="total-row">
+                <td colspan="3">阶段二完成后：7/9 个来源有真实日期</td>
+                <td>合计 2.5h</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 阶段三 -->
+        <div class="phase">
+          <div class="phase-header" style="background:#FFF0F0;border-bottom:1px solid #FFCDD2">
+            <div class="phase-num" style="background:var(--red)">3</div>
+            <div class="phase-title">高成本方案 — 建议评估后决策</div>
+            <div class="phase-subtitle" style="color:var(--red)">7h+ &nbsp;·&nbsp; 2 个来源</div>
+          </div>
+          <table class="phase-table">
+            <thead>
+              <tr><th>来源</th><th>方案</th><th>月运行成本</th><th>工期</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>九派新闻</td>
+                <td>
+                  <strong>方案A（推荐）</strong>：Playwright 无头浏览器，完整渲染页面<br>
+                  <span style="color:var(--text-muted)">方案B：URL 正则提取日期（/rain/a/YYYYMMDD），精度到日，无需浏览器</span>
+                </td>
+                <td>¥180/月（服务器升级）</td>
+                <td>4h</td>
+              </tr>
+              <tr>
+                <td>中纪委要闻</td>
+                <td>
+                  <strong>方案A</strong>：代理 IP 池轮换，绕过 WAF<br>
+                  <strong>方案B（简化）</strong>：URL 正则解析日期 /t20260509_，仅在能访问时有效
+                </td>
+                <td>¥35–200/月（代理服务）</td>
+                <td>3h</td>
+              </tr>
+              <tr class="total-row">
+                <td colspan="2">⚠ 这两个来源目前采集到的文章均为 0 条，投入产出比极低</td>
+                <td>—</td>
+                <td>合计 7h+</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 成本汇总 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:#FCE4EC">💰</div>
+      <div class="card-title">工期与成本估算</div>
+    </div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:16px">
+
+      <div class="summary-banner">
+        <div class="summary-item">
+          <div class="summary-val" style="color:var(--green)">3h</div>
+          <div class="summary-label">阶段一：快速修复</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-val" style="color:var(--orange)">+2.5h</div>
+          <div class="summary-label">阶段二：接口适配（可选）</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-val" style="color:var(--red)">+7h</div>
+          <div class="summary-label">阶段三：高成本（建议暂缓）</div>
+        </div>
+      </div>
+
+      <table class="cost-table">
+        <thead>
+          <tr><th>阶段</th><th>覆盖来源</th><th>开发工期</th><th>开发成本（¥300/h）</th><th>月运行成本</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>阶段一</td>
+            <td>科学网、北大新闻网、哈工大、教育在线</td>
+            <td>3h</td>
+            <td><span class="cost-em">¥900</span></td>
+            <td>无</td>
+          </tr>
+          <tr>
+            <td>阶段二</td>
+            <td>北大通知公告</td>
+            <td>2.5h</td>
+            <td><span class="cost-em">¥750</span></td>
+            <td>无</td>
+          </tr>
+          <tr>
+            <td>阶段三-A</td>
+            <td>九派新闻</td>
+            <td>4h</td>
+            <td><span class="cost-em">¥1,200</span></td>
+            <td>¥180/月（服务器升级）</td>
+          </tr>
+          <tr>
+            <td>阶段三-B</td>
+            <td>中纪委要闻</td>
+            <td>3h</td>
+            <td><span class="cost-em">¥900</span></td>
+            <td>¥35–200/月（代理）</td>
+          </tr>
+          <tr>
+            <td>合计（仅阶段一二）</td>
+            <td>7/9 个来源有真实日期</td>
+            <td><strong>5.5h</strong></td>
+            <td><span class="cost-em">¥1,650</span></td>
+            <td>无额外成本</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 建议 -->
+  <div class="recommend-box">
+    <div class="recommend-icon">💡</div>
+    <div>
+      <div class="recommend-title">综合建议</div>
+      <ul class="recommend-list">
+        <li><strong>立刻执行阶段一（3h）</strong>：科学网、北大新闻网、哈工大（RSS）、教育在线全部修复，0 额外运营成本，完成后可准确过滤当天文章</li>
+        <li><strong>北大通知公告（阶段二）</strong>：如该来源内容对业务重要则投入，否则可暂用无日期方式展示</li>
+        <li><strong>九派新闻 & 中纪委（阶段三）</strong>：两者目前采集量均为 0 条，当前投入回报比极低，建议等来源稳定有产出后再考虑</li>
+        <li><strong>中纪委替代方案</strong>：可考虑换用「中央纪委国家监委网站」的微信公众号推文聚合，避开 WAF 问题</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<div style="text-align:center;padding:24px;color:var(--text-muted);font-size:12px;border-top:1px solid var(--border);margin-top:8px">
+  news-aggregator · 调研生成于 2026-05-11
+</div>
+
+</body>
+</html>
